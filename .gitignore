@@ -1,0 +1,9 @@
+# Editör / araç ayarları
+.claude/
+.vscode/
+.idea/
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
+desktop.ini
