@@ -536,10 +536,21 @@ body.is-ready .fade-up { opacity: 1; transform: none; }
   letter-spacing: -.01em;
   text-shadow: 0 2px 30px rgba(0, 0, 0, .35);
 }
+/* sahne önce karanlığa iner, yeşil perde ondan sonra gelir: turuncu ile yeşil üst üste binip
+   bulanık bir ara ton oluşturmaz */
+.hero__dim {
+  position: absolute;
+  inset: 0;
+  background: #060403;
+  opacity: 0;
+  pointer-events: none;
+}
 .hero__veil {
   position: absolute;
   inset: 0;
-  background: radial-gradient(120% 90% at 70% 40%, #16461a, #071b09);
+  /* notalar bölümünün gradyanının (merkez: 70% 40%) yukarıya doğru devamı: perde altta,
+     Notalar üstte kalırken sınırda iki taraf aynı renge denk gelir — çizgi görünmez */
+  background: radial-gradient(120% 90% at 70% 140%, #16461a, #071b09);
   opacity: 0;
   pointer-events: none;
 }
@@ -681,49 +692,17 @@ body.is-ready .fade-up { opacity: 1; transform: none; }
 .notes__steps span.is-active { color: var(--ink); }
 .notes__steps span.is-active::before { transform: scaleX(1); }
 
-/* Glitch geçişi */
-.is-glitch .note.is-active,
-.is-glitch .notes__timer,
-.is-glitch .notes__art { animation: glitchShift .5s steps(2) both; }
-.is-glitch .note.is-active h2,
-.glitch-text { animation: glitchText .5s steps(3) both; }
-@keyframes glitchShift {
-  0% { transform: translate(0); clip-path: inset(0 0 0 0); }
-  20% { transform: translate(-6px, 2px); clip-path: inset(12% 0 58% 0); }
-  40% { transform: translate(5px, -2px); clip-path: inset(62% 0 8% 0); }
-  60% { transform: translate(-3px, 0); clip-path: inset(30% 0 40% 0); }
-  80% { transform: translate(4px, 1px); clip-path: inset(0 0 72% 0); }
-  100% { transform: translate(0); clip-path: inset(0 0 0 0); }
+/* Koleksiyona geçiş: bölüm yukarı kayarken alt kenarı arkadaki koleksiyon rengine doğru
+   yumuşakça erir; içerik de girişte belirir, çıkışta söner.
+   (--fe: erime yüksekliği, --nx: içerik görünürlüğü — main.js) */
+.notes__sticky.is-exit {
+  -webkit-mask-image: linear-gradient(#000 calc(100% - var(--fe, 0px)), rgba(0, 0, 0, .82) calc(100% - var(--fe, 0px) * .62), rgba(0, 0, 0, .38) calc(100% - var(--fe, 0px) * .28), transparent);
+  mask-image: linear-gradient(#000 calc(100% - var(--fe, 0px)), rgba(0, 0, 0, .82) calc(100% - var(--fe, 0px) * .62), rgba(0, 0, 0, .38) calc(100% - var(--fe, 0px) * .28), transparent);
 }
-@keyframes glitchText {
-  0%, 100% { text-shadow: none; }
-  25% { text-shadow: -4px 0 rgba(255, 40, 70, .8), 4px 0 rgba(40, 230, 255, .8); }
-  50% { text-shadow: 3px 0 rgba(255, 40, 70, .8), -3px 0 rgba(40, 230, 255, .8); }
-  75% { text-shadow: -2px 0 rgba(255, 40, 70, .7), 2px 0 rgba(40, 230, 255, .7); }
-}
-
-.glitch {
-  position: fixed;
-  inset: 0;
-  z-index: 55;
-  pointer-events: none;
-  opacity: 0;
-  mix-blend-mode: screen;
-}
-.glitch.is-on { animation: glitchFlash .55s steps(4) both; }
-.glitch i {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 50, 80, .35) 20%, rgba(40, 220, 255, .35) 60%, transparent);
-}
-@keyframes glitchFlash {
-  0% { opacity: 0; transform: translateX(0); }
-  20% { opacity: 1; transform: translateX(-12px); }
-  45% { opacity: .7; transform: translateX(16px); }
-  70% { opacity: 1; transform: translateX(-6px); }
-  100% { opacity: 0; transform: translateX(0); }
-}
+.notes__copy,
+.notes__art,
+.notes__timer,
+.notes__steps { opacity: var(--nx, 1); }
 
 /* ==========================================================
    KOLEKSİYON
@@ -736,12 +715,28 @@ body.is-ready .fade-up { opacity: 1; transform: none; }
   height: 100svh;
   overflow: hidden;
 }
+/* Ürünler bölümü yaklaşınca alt kenar sayfanın zeminine doğru kararır; sert kırmızı→siyah çizgi kalmaz */
+.collection__sticky::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 40vh;
+  background: linear-gradient(rgba(10, 8, 7, 0), rgba(10, 8, 7, .4) 40%, rgba(10, 8, 7, .82) 75%, var(--bg));
+  opacity: var(--cf, 0);
+  pointer-events: none;
+}
 .collection__panel {
   position: absolute;
+  z-index: 1;
   left: 55%;
   top: 50%;
   width: min(440px, 33vw);
   transform: translateY(-50%);
+  /* bölüm yerine otururken belirir (--ca, --cy — main.js) */
+  opacity: var(--ca, 1);
+  translate: 0 var(--cy, 0px);
 }
 .collection__head {
   display: flex;
@@ -1043,7 +1038,8 @@ body.is-ready .fade-up { opacity: 1; transform: none; }
 .atelier {
   position: relative;
   z-index: 2;
-  background: var(--bg-2);
+  /* üstteki bölümün zemininden yumuşakça geçsin (iki koyu ton arasında çizgi görünmesin) */
+  background: linear-gradient(var(--bg), var(--bg-2) 30vh);
   padding: 18vh 0 0;
   overflow: hidden;
 }
@@ -1170,7 +1166,7 @@ body.is-ready .fade-up { opacity: 1; transform: none; }
 .contact {
   position: relative;
   z-index: 2;
-  background: var(--bg);
+  background: linear-gradient(var(--bg-2), var(--bg) 30vh);
   padding: 18vh var(--pad) 10vh;
 }
 .contact__grid {
@@ -1479,6 +1475,8 @@ a.crow:hover::after { transform: scaleX(1); }
 @media (max-width: 1100px) {
   .nav a { padding: 9px 10px; letter-spacing: .12em; }
   .brand__word { display: none; }
+  /* dar masaüstünde "Tende" etiketi menüyle çakışıyordu */
+  .skin__label { display: none; }
 }
 
 @media (max-width: 860px) {
@@ -1515,7 +1513,7 @@ a.crow:hover::after { transform: scaleX(1); }
     width: min(52vw, 230px);
     transform: translateX(50%);
   }
-  .notes__timer { right: auto; left: var(--pad); bottom: 2vh; font-size: 26vw; opacity: .7; }
+  .notes__timer { right: auto; left: var(--pad); bottom: 2vh; font-size: 26vw; opacity: calc(var(--nx, 1) * .7); }
   .notes__steps { display: none; }
 
   .collection { height: 460vh; }

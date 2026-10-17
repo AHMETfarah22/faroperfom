@@ -834,6 +834,9 @@
        Ağızda da her basışta kısa bir parlama oluyor. */
     const drops = [];
     let flash = 0, fx0 = 0, fy0 = 0, dropAcc = 0, cloudAcc = 0;
+    // sahne karardığında sprey (sis, damla, parlama) onunla birlikte sönsün
+    let sprayAlpha = 1;
+    this.setSprayAlpha = function (a) { sprayAlpha = a; };
     const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;
     const sizeK = () => clamp(H / D / 850, 0.6, 1.35);   // ekran boyuna göre ölçek
     const vScale = () => D * sizeK();
@@ -914,7 +917,7 @@
         }
         mctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1;
+        ctx.globalAlpha = sprayAlpha;
         ctx.drawImage(mistCanvas, 0, 0, W, H);
         mistDirty = mist.length > 0;
       }
@@ -936,7 +939,7 @@
           d.vy = d.vy * drag + g * dt;
           d.x += d.vx * dt;
           d.y += d.vy * dt;
-          ctx.globalAlpha = d.a * (1 - f) * (1 - f);
+          ctx.globalAlpha = d.a * (1 - f) * (1 - f) * sprayAlpha;
           ctx.lineWidth = d.w;
           ctx.beginPath();
           ctx.moveTo(d.x - d.vx * 0.016, d.y - d.vy * 0.016);
@@ -949,7 +952,7 @@
       if (flash > 0.01) {
         const fs = sprite('255,240,215', 0.3);
         const r = (18 + flash * 30) * S;
-        ctx.globalAlpha = Math.min(1, flash) * 0.85;
+        ctx.globalAlpha = Math.min(1, flash) * 0.85 * sprayAlpha;
         ctx.drawImage(fs, fx0 - r * 0.6, fy0 - r, r * 2, r * 2);
         flash *= Math.exp(-7 * dt);
       }

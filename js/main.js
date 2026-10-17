@@ -61,6 +61,7 @@
     heroCopy: $('#heroCopy'),
     heroScroll: $('#heroScroll'),
     heroSpray: $('#heroSpray'),
+    heroDim: $('#heroDim'),
     heroVeil: $('#heroVeil'),
     notes: $('#notalar'),
     notesSticky: $('#notesSticky'),
@@ -70,6 +71,7 @@
     archCanvas: $('#archCanvas'),
     notesTimer: $('#notesTimer'),
     coll: $('#koleksiyon'),
+    collSticky: $('.collection__sticky'),
     collPanel: $('#collPanel'),
     collIndex: $('#collIndex'),
     collName: $('#collName'),
@@ -86,7 +88,6 @@
     cards: $('#cards'),
     lighthouse: $('#lighthouse'),
     drawer: $('#drawer'),
-    glitch: $('#glitch'),
     news: $('#news'),
     newsMsg: $('#newsMsg')
   };
@@ -214,11 +215,14 @@
     const sIn = range(p, 0.56, 0.68), sOut = range(p, 0.88, 0.97);
     setStyle(el.heroSpray, 'opacity', (sIn * (1 - sOut)).toFixed(2));
     setStyle(el.heroSpray, 'transform', 'translate(-50%,' + ((1 - easeOut(sIn)) * 24 - sOut * 20).toFixed(0) + 'px)');
-    setStyle(el.heroVeil, 'opacity', range(p, 0.87, 1).toFixed(2));
+    const dim = smooth(range(p, 0.83, 0.92));
+    setStyle(el.heroDim, 'opacity', dim.toFixed(3));
+    setStyle(el.heroVeil, 'opacity', smooth(range(p, 0.9, 1)).toFixed(3));
+    if (fx) fx.setSprayAlpha(1 - dim);
 
     if (stage && mode === 'hero') {
       stage.setTarget(heroTargets(p));
-      updateSpray(H.visible && p > 0.6 && p < 0.93, dt);
+      updateSpray(H.visible && p > 0.6 && p < 0.88, dt);
     }
   }
 
@@ -261,7 +265,7 @@
   /* ==========================================================
      NOTALAR
      ========================================================== */
-  let noteActive = 0;
+  let noteActive = 0, notesExit = false;
   const timer = { from: 15, to: 15, t: 1, val: 15 };
 
   function switchNote(i) {
@@ -288,6 +292,15 @@
 
     const a = F.notes[i0], b = F.notes[i1];
     if (!N.visible) return;
+
+    // çıkış: bölüm yukarı kayarken alt kenarı arkadaki koleksiyon rengine doğru erisin (sert çizgi kalmasın);
+    // içerik girişte belirsin, çıkışta sönsün
+    const vh = metrics.vh;
+    const enter = clamp(N.top / vh), exit = clamp((vh - N.bottom) / vh);
+    if ((exit > 0) !== notesExit) el.notesSticky.classList.toggle('is-exit', (notesExit = exit > 0));
+    setStyle(el.notesSticky, '--fe', (Math.min(vh * 0.42, N.bottom * 0.8) * smooth(range(exit, 0, 0.22))).toFixed(0) + 'px');
+    setStyle(el.notesSticky, '--nx', ((1 - smooth(range(enter, 0.02, 0.5))) * (1 - smooth(range(exit, 0.02, 0.5)))).toFixed(3));
+
     setStyle(el.notesSticky, '--n1', F.mixHex(a.c1, b.c1, k));
     setStyle(el.notesSticky, '--n2', F.mixHex(a.c2, b.c2, k));
     setStyle(el.notesSticky, '--na', F.mixHex(a.accent, b.accent, k));
@@ -317,38 +330,9 @@
   }
 
   /* ==========================================================
-     GLITCH GEÇİŞİ (nota → koleksiyon)
-     ========================================================== */
-  let lastGlitch = 0, prevCollTop = null;
-  function glitch() {
-    const now = performance.now();
-    if (now - lastGlitch < 900 || reduced) return;
-    lastGlitch = now;
-    el.glitch.innerHTML = '';
-    for (let i = 0; i < 9; i++) {
-      const b = document.createElement('i');
-      b.style.top = (Math.random() * 100).toFixed(1) + '%';
-      b.style.height = (2 + Math.random() * 9).toFixed(1) + '%';
-      b.style.transform = 'translateX(' + ((Math.random() - 0.5) * 40).toFixed(0) + 'px)';
-      el.glitch.appendChild(b);
-    }
-    el.glitch.classList.remove('is-on');
-    el.notesSticky.classList.remove('is-glitch');
-    el.collName.classList.remove('glitch-text');
-    void el.glitch.offsetWidth;
-    el.glitch.classList.add('is-on');
-    el.notesSticky.classList.add('is-glitch');
-    el.collName.classList.add('glitch-text');
-    setTimeout(() => {
-      el.glitch.classList.remove('is-on');
-      el.notesSticky.classList.remove('is-glitch');
-      el.collName.classList.remove('glitch-text');
-    }, 620);
-  }
-
-  /* ==========================================================
      KOLEKSİYON
      ========================================================== */
+  let prevCollTop = null;
   el.collDots.innerHTML = P.map((p, i) =>
     '<button class="dot' + (i === 0 ? ' is-active' : '') + '" style="--c:' + p.accent + '" data-i="' + i + '" aria-label="' + p.name + '"></button>'
   ).join('');
@@ -411,14 +395,18 @@
   function updateCollection(C) {
     const idx = clamp(Math.floor(C.p * P.length * 0.9999), 0, P.length - 1);
     if (idx !== collIdx) setColl(idx);
+    const vh = metrics.vh;
     if (stage && mode === 'coll') {
       stage.setTarget(collTargets());
-      // bölüm henüz yapışmadıysa şişe de sayfayla birlikte kaysın
-      stage.setScrollShift(C.top > 0 ? -C.top / window.innerHeight : 0);
+      // bölüm yapışık değilken (giriş ya da çıkış) şişe de paneliyle birlikte sayfayla kaysın
+      stage.setScrollShift(C.top > 0 ? -C.top / vh : C.bottom < vh ? (vh - C.bottom) / vh : 0);
     }
-    // glitch: bölüm sınırı ekranın ortasından geçerken
-    const mid = window.innerHeight * 0.55;
-    if (prevCollTop !== null && ((prevCollTop > mid && C.top <= mid) || (prevCollTop <= mid && C.top > mid))) glitch();
+    // panel yerine otururken yumuşakça belirsin
+    const arrive = smooth(range(C.top, vh * 0.75, vh * 0.12));
+    setStyle(el.collPanel, '--ca', arrive.toFixed(3));
+    setStyle(el.collPanel, '--cy', ((1 - arrive) * 40).toFixed(1) + 'px');
+    // ürünler bölümü yaklaştıkça alt kenar sayfa zeminine doğru kararsın
+    setStyle(el.collSticky, '--cf', smooth(range(C.bottom, vh * 1.4, vh)).toFixed(3));
     prevCollTop = C.top;
   }
 
